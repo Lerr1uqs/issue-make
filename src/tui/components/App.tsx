@@ -15,6 +15,12 @@ import { ConfigManager } from '../../core/config.js';
 import { IssueType } from '../../core/types.js';
 import { validateIssueType, parseSlashCommand } from '../../utils/validation.js';
 import { getTimestamp } from '../../utils/date.js';
+import {
+  initCommandHandler,
+  addCommandHandler,
+  openCommandHandler,
+  closeCommandHandler,
+} from '../handlers/index.js';
 
 interface Message {
   type: 'info' | 'success' | 'error' | 'warning';
@@ -23,32 +29,9 @@ interface Message {
 
 export const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [fileManager] = useState(() => new FileManager(process.cwd()));
-  const [aiService, setAiService] = useState<AIService | null>(null);
-
-  useEffect(() => {
-    initializeAI();
-  }, []);
 
   const addMessage = (type: Message['type'], content: string) => {
     setMessages((prev) => [...prev, { type, content }]);
-  };
-
-  const initializeAI = async () => {
-    try {
-      const configManager = new ConfigManager();
-      const config = await configManager.getConfig();
-
-      if (config.url && config.api && config.model) {
-        const service = new AIService(config);
-        setAiService(service);
-        addMessage('info', 'AI service initialized');
-      } else {
-        addMessage('warning', 'AI not configured');
-      }
-    } catch (error) {
-      addMessage('warning', 'Failed to initialize AI service');
-    }
   };
 
   const handleCommand = async (input: string) => {
@@ -77,70 +60,117 @@ export const App: React.FC = () => {
     const parsed = parseSlashCommand(command);
 
     if (!parsed) {
-      addMessage('error', 'Invalid command format. Use /add:TYPE description');
+      // Try to parse as simple command like /init, /open, /close
+      if (command === '/init') {
+        await handleInitCommand();
+        return;
+      }
+
+      if (command.startsWith('/open')) {
+        const identifier = command.slice(6).trim();
+        await handleOpenCommand(identifier);
+        return;
+      }
+
+      if (command.startsWith('/close')) {
+        const identifier = command.slice(7).trim();
+        await handleCloseCommand(identifier);
+        return;
+      }
+
+      addMessage('error', 'Invalid command format. Use /add:TYPE, /init, /open, or /close');
       addMessage('info', 'Valid types: feat, todo, bug, refact');
       return;
     }
 
-    if (parsed.action !== 'add') {
-      addMessage('error', 'Only /add command is supported in TUI mode');
-      return;
-    }
+    // Handle /add:TYPE command
+    if (parsed.action === 'add') {
+      const type = validateIssueType(parsed.type);
+      if (!type) {
+        addMessage('error', `Invalid issue type: ${parsed.type}`);
+        addMessage('info', 'Valid types: feat, todo, bug, refact');
+        return;
+      }
 
-    const type = validateIssueType(parsed.type);
-    if (!type) {
-      addMessage('error', `Invalid issue type: ${parsed.type}`);
-      addMessage('info', 'Valid types: feat, todo, bug, refact');
-      return;
-    }
+      // Use the description from the command
+      if (!parsed.description || parsed.description.trim().length === 0) {
+        addMessage('error', 'Description is required. Use /add:TYPE description');
+        return;
+      }
 
-    // Use the description from the command
-    if (!parsed.description || parsed.description.trim().length === 0) {
-      addMessage('error', 'Description is required. Use /add:TYPE description');
-      return;
+      await handleAddCommand(type, parsed.description);
+    } else {
+      addMessage('error', `Unsupported command: ${parsed.action}`);
+      addMessage('info', 'Supported commands: /add:TYPE, /init, /open, /close');
     }
-
-    await createIssue(type, parsed.description);
   };
 
-  const createIssue = async (type: IssueType, description: string) => {
-    if (!description.trim()) {
-      addMessage('error', 'Description cannot be empty');
-      return;
-    }
+  const handleInitCommand = async () => {
+    addMessage('info', 'Initializing configuration...');
+    const result = await initCommandHandler();
 
-    // Generate title
-    let title: string;
-    if (aiService) {
-      addMessage('info', 'Generating title with AI...');
-      try {
-        const result = await aiService.generateTitle(description);
-        if (result.success && result.title) {
-          title = result.title;
-          addMessage('success', `Generated title: ${title}`);
-        } else {
-          addMessage('warning', 'AI generation failed, using fallback');
-          title = `Issue-${getTimestamp()}`;
-        }
-      } catch (error) {
-        addMessage('warning', 'AI service error, using fallback title');
-        title = `Issue-${getTimestamp()}`;
-      }
+    if (result.success) {
+      addMessage('success', 'Configuration initialized successfully');
+      addMessage('info', `Config file: ${result.configPath}`);
     } else {
-      addMessage('warning', 'AI not configured, using fallback title');
-      title = `Issue-${getTimestamp()}`;
+      addMessage('error', `Failed to initialize configuration: ${result.error}`);
     }
+  };
 
-    // Create issue
-    const result = await fileManager.createIssue(title, type, description);
+  const handleAddCommand = async (type: IssueType, description: string) => {
+    const result = await addCommandHandler(type, description, process.cwd());
 
     if (result.success) {
       addMessage('success', `Issue #${result.issue?.number} created: ${result.issue?.title}`);
+      addMessage('info', `Type: ${result.issue?.type}`);
       addMessage('info', `File: ${result.filePath}`);
     } else {
       addMessage('error', `Failed to create issue: ${result.error}`);
     }
   };
+
+  const handleOpenCommand = async (identifier: string) => {
+    if (!identifier) {
+      addMessage('error', 'Please provide an issue identifier. Use /open <number|title>');
+      return;
+    }
+
+    addMessage('info', `Opening issue: ${identifier}...`);
+    const result = await openCommandHandler(identifier, process.cwd());
+
+    if (result.success) {
+      addMessage('success', `Issue #${result.issue?.number} opened successfully`);
+      addMessage('info', `Title: ${result.issue?.title}`);
+      addMessage('info', `Type: ${result.issue?.type}`);
+      addMessage('info', `Solution file: ${result.solutionPath}`);
+      addMessage('info', `AGENTS.md: ${result.agentsPath}`);
+    } else {
+      addMessage('error', `Failed to open issue: ${result.error}`);
+    }
+  };
+
+  const handleCloseCommand = async (identifier: string) => {
+    if (!identifier) {
+      addMessage('error', 'Please provide an issue identifier. Use /close <number|title>');
+      return;
+    }
+
+    addMessage('info', `Closing issue: ${identifier}...`);
+    const result = await closeCommandHandler(identifier, process.cwd());
+
+    if (result.success) {
+      addMessage('success', 'Issue closed successfully');
+      addMessage('info', `Archived: ${result.archivedPath}`);
+      addMessage('info', `AGENTS.md cleaned: ${result.agentsPath}`);
+    } else {
+      addMessage('error', `Failed to close issue: ${result.error}`);
+      if (result.error?.includes('Solution file not found')) {
+        addMessage('warning', 'Hint: Please create solution.md first or ask your agent to create it');
+      }
+    }
+  };
+
+  
 
   return (
     <Box flexDirection="column">
