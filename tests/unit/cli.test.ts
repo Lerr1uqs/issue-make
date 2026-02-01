@@ -81,6 +81,7 @@ describe('CLI Commands', () => {
     it('should create issue from description file', async () => {
       mockedFs.readFile.mockResolvedValue('Test description');
       const mockConfigManager = {
+        configExists: jest.fn().mockResolvedValue(true),
         getConfig: jest.fn().mockResolvedValue({ url: '', api: '', model: '' }),
       };
       const mockFileManager = {
@@ -97,6 +98,27 @@ describe('CLI Commands', () => {
 
       expect(mockFileManager.createIssue).toHaveBeenCalled();
       expect(consoleLog).toHaveBeenCalledWith(expect.stringContaining('created successfully'));
+    });
+
+    it('should warn when config file is missing', async () => {
+      mockedFs.readFile.mockResolvedValue('Test description');
+      const mockConfigManager = {
+        configExists: jest.fn().mockResolvedValue(false),
+        getConfig: jest.fn().mockResolvedValue({ url: '', api: '', model: '' }),
+      };
+      const mockFileManager = {
+        createIssue: jest.fn().mockResolvedValue({
+          success: true,
+          issue: { number: 0, title: 'Test', type: 'feat' },
+          filePath: '/test/.issues/stash/Test.0.md',
+        }),
+      };
+      MockedConfigManager.mockImplementation(() => mockConfigManager as any);
+      MockedFileManager.mockImplementation(() => mockFileManager as any);
+
+      await addCommand('feat', '/test/description.md');
+
+      expect(consoleWarn).toHaveBeenCalledWith(expect.stringContaining('Config file not found'));
     });
 
     it('should validate issue type', async () => {
@@ -139,6 +161,7 @@ describe('CLI Commands', () => {
     it('should use AI to generate title when configured', async () => {
       mockedFs.readFile.mockResolvedValue('Test description');
       const mockConfigManager = {
+        configExists: jest.fn().mockResolvedValue(true),
         getConfig: jest.fn().mockResolvedValue({
           url: 'https://api.test.com',
           api: 'test-key',
@@ -176,6 +199,7 @@ describe('CLI Commands', () => {
     it('should fallback to timestamp when AI fails', async () => {
       mockedFs.readFile.mockResolvedValue('Test description');
       const mockConfigManager = {
+        configExists: jest.fn().mockResolvedValue(true),
         getConfig: jest.fn().mockResolvedValue({
           url: 'https://api.test.com',
           api: 'test-key',
@@ -208,6 +232,7 @@ describe('CLI Commands', () => {
     it('should handle creation errors', async () => {
       mockedFs.readFile.mockResolvedValue('Test description');
       const mockConfigManager = {
+        configExists: jest.fn().mockResolvedValue(true),
         getConfig: jest.fn().mockResolvedValue({ url: '', api: '', model: '' }),
       };
       const mockFileManager = {

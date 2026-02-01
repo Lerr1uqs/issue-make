@@ -16,7 +16,9 @@ describe('TUI Command Definitions', () => {
     expect(AVAILABLE_COMMANDS).toContain('/add:refact');
     expect(AVAILABLE_COMMANDS).toContain('/open');
     expect(AVAILABLE_COMMANDS).toContain('/close');
+    expect(AVAILABLE_COMMANDS).toContain('/list');
     expect(AVAILABLE_COMMANDS).toContain('/exit');
+    expect(AVAILABLE_COMMANDS).toContain('/quit');
   });
 
   it('should return add commands for /add prefix', () => {

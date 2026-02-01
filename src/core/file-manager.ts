@@ -15,6 +15,8 @@ import {
   IssueSearchResult,
   IssueOpenResult,
   IssueCloseResult,
+  IssueListResult,
+  IssueListItem,
 } from './types.js';
 import {
   generateIssueFilename,
@@ -69,35 +71,31 @@ export class FileManager {
     const stashDir = getStashDir(this.basePath);
     const doingDir = getDoingDir(this.basePath);
 
-    let maxId = -1;
+    const usedIds = new Set<number>();
 
-    // Scan stash directory
-    try {
-      const stashFiles = await fs.readdir(stashDir);
-      for (const file of stashFiles) {
-        const number = extractIssueNumber(file);
-        if (number !== null && number > maxId) {
-          maxId = number;
+    const collectIds = async (dir: string) => {
+      try {
+        const files = await fs.readdir(dir);
+        for (const file of files) {
+          const number = extractIssueNumber(file);
+          if (number !== null && number >= 0) {
+            usedIds.add(number);
+          }
         }
+      } catch (error) {
+        // Directory doesn't exist yet
       }
-    } catch (error) {
-      // Directory doesn't exist yet, maxId remains -1
+    };
+
+    await collectIds(stashDir);
+    await collectIds(doingDir);
+
+    let candidate = 0;
+    while (usedIds.has(candidate)) {
+      candidate += 1;
     }
 
-    // Scan doing directory
-    try {
-      const doingFiles = await fs.readdir(doingDir);
-      for (const file of doingFiles) {
-        const number = extractIssueNumber(file);
-        if (number !== null && number > maxId) {
-          maxId = number;
-        }
-      }
-    } catch (error) {
-      // Directory doesn't exist yet
-    }
-
-    return maxId + 1;
+    return candidate;
   }
 
   /**
@@ -379,6 +377,81 @@ export class FileManager {
       return {
         success: false,
         error: `Failed to close issue: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * List current issues in stash and doing directories
+   * @returns IssueListResult
+   */
+  async listIssues(): Promise<IssueListResult> {
+    const issues: IssueListItem[] = [];
+    const stashDir = getStashDir(this.basePath);
+    const doingDir = getDoingDir(this.basePath);
+
+    const collectFromDir = async (dir: string, status: IssueStatus): Promise<void> => {
+      try {
+        const files = await fs.readdir(dir);
+        for (const file of files) {
+          if (!isIssueFile(file)) {
+            continue;
+          }
+          const number = extractIssueNumber(file);
+          if (number === null) {
+            continue;
+          }
+
+          const title = file.replace(/\.\d+\.md$/, '');
+          let index = number;
+          let type: IssueListItem['type'] = 'unknown';
+
+          try {
+            const content = await fs.readFile(path.join(dir, file), 'utf-8');
+            const { metadata } = this.parseIssueFile(content);
+            const validatedType = validateIssueType(metadata.Type);
+            if (validatedType) {
+              type = validatedType;
+            }
+            if (typeof metadata.Index === 'number' && Number.isInteger(metadata.Index)) {
+              index = metadata.Index;
+            }
+          } catch (error) {
+            // Ignore parse errors and fall back to filename-based index/type
+          }
+
+          issues.push({
+            title,
+            number,
+            index,
+            type,
+            status,
+          });
+        }
+      } catch (error) {
+        // Directory doesn't exist yet
+      }
+    };
+
+    try {
+      await collectFromDir(stashDir, IssueStatus.STASH);
+      await collectFromDir(doingDir, IssueStatus.DOING);
+
+      issues.sort((a, b) => {
+        if (a.index !== b.index) {
+          return a.index - b.index;
+        }
+        if (a.status !== b.status) {
+          return a.status.localeCompare(b.status);
+        }
+        return a.title.localeCompare(b.title);
+      });
+
+      return { success: true, issues };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to list issues: ${error}`,
       };
     }
   }

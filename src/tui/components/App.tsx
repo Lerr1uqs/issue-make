@@ -20,6 +20,7 @@ import {
   addCommandHandler,
   openCommandHandler,
   closeCommandHandler,
+  listCommandHandler,
 } from '../handlers/index.js';
 
 interface Message {
@@ -42,7 +43,7 @@ export const App: React.FC = () => {
     const trimmedInput = input.trim();
 
     // Check for exit command
-    if (trimmedInput === '/exit' || trimmedInput === 'exit') {
+    if (trimmedInput === '/exit' || trimmedInput === 'exit' || trimmedInput === '/quit' || trimmedInput === 'quit') {
       addMessage('info', 'Goodbye!');
       setTimeout(() => process.exit(0), 100);
       return;
@@ -52,7 +53,7 @@ export const App: React.FC = () => {
     if (trimmedInput.startsWith('/')) {
       await handleSlashCommand(trimmedInput);
     } else {
-      addMessage('error', 'Invalid command. Use /add:TYPE or /exit');
+      addMessage('error', 'Invalid command. Use /add:TYPE, /exit, or /quit');
     }
   };
 
@@ -63,6 +64,11 @@ export const App: React.FC = () => {
       // Try to parse as simple command like /init, /open, /close
       if (command === '/init') {
         await handleInitCommand();
+        return;
+      }
+
+      if (command === '/list') {
+        await handleListCommand();
         return;
       }
 
@@ -78,7 +84,7 @@ export const App: React.FC = () => {
         return;
       }
 
-      addMessage('error', 'Invalid command format. Use /add:TYPE, /init, /open, or /close');
+      addMessage('error', 'Invalid command format. Use /add:TYPE, /init, /open, /close, or /list');
       addMessage('info', 'Valid types: feat, todo, bug, refact');
       return;
     }
@@ -101,7 +107,7 @@ export const App: React.FC = () => {
       await handleAddCommand(type, parsed.description);
     } else {
       addMessage('error', `Unsupported command: ${parsed.action}`);
-      addMessage('info', 'Supported commands: /add:TYPE, /init, /open, /close');
+      addMessage('info', 'Supported commands: /add:TYPE, /init, /open, /close, /list');
     }
   };
 
@@ -121,6 +127,9 @@ export const App: React.FC = () => {
     const result = await addCommandHandler(type, description, process.cwd());
 
     if (result.success) {
+      if (result.warning) {
+        addMessage('warning', result.warning);
+      }
       addMessage('success', `Issue #${result.issue?.number} created: ${result.issue?.title}`);
       addMessage('info', `Type: ${result.issue?.type}`);
       addMessage('info', `File: ${result.filePath}`);
@@ -167,6 +176,20 @@ export const App: React.FC = () => {
       if (result.error?.includes('Solution file not found')) {
         addMessage('warning', 'Hint: Please create solution.md first or ask your agent to create it');
       }
+    }
+  };
+
+  const handleListCommand = async () => {
+    const result = await listCommandHandler(process.cwd());
+
+    if (result.success) {
+      if (result.output) {
+        addMessage('info', result.output);
+      } else {
+        addMessage('info', 'No issues found.');
+      }
+    } else {
+      addMessage('error', `Failed to list issues: ${result.error}`);
     }
   };
 

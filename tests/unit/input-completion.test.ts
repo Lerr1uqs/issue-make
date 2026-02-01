@@ -17,7 +17,9 @@ describe('Input Component - Command Completion Logic', () => {
 
       expect(matches).toContain('/init');
       expect(matches).toContain('/add:feat');
+      expect(matches).toContain('/list');
       expect(matches).toContain('/exit');
+      expect(matches).toContain('/quit');
     });
 
     it('should filter commands based on input', () => {
@@ -29,6 +31,8 @@ describe('Input Component - Command Completion Logic', () => {
       expect(matches).toContain('/add:refact');
       expect(matches).not.toContain('/init');
       expect(matches).not.toContain('/exit');
+      expect(matches).not.toContain('/quit');
+      expect(matches).not.toContain('/list');
     });
 
     it('should hide completion when no matches found', () => {

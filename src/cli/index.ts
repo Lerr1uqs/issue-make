@@ -8,6 +8,7 @@ import { initCommand } from './commands/init.js';
 import { addCommand } from './commands/add.js';
 import { openCommand } from './commands/open.js';
 import { closeCommand } from './commands/close.js';
+import { listCommand } from './commands/list.js';
 import { testLLMCommand } from './commands/test-llm.js';
 
 /**
@@ -51,6 +52,13 @@ export function createCLI(): Command {
     .argument('<identifier>', 'Issue number or title')
     .action(async (identifier: string) => {
       await closeCommand(identifier);
+    });
+
+  program
+    .command('list')
+    .description('List current issues')
+    .action(async () => {
+      await listCommand();
     });
 
   program

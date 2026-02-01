@@ -115,7 +115,7 @@ describe('FileManager', () => {
 
       const id = await fileManager.getNextId();
 
-      expect(id).toBe(6);
+      expect(id).toBe(1);
     });
 
     it('should scan both stash and doing directories', async () => {
@@ -131,7 +131,7 @@ describe('FileManager', () => {
   });
 
   describe('AC-4.2.2: ID management after deletion', () => {
-    it('should continue incrementing after deletion', async () => {
+    it('should reuse lowest available ID after deletion', async () => {
       mockedFs.readdir.mockResolvedValue([
         'issue-0.0.md',
         'issue-2.2.md',
@@ -139,7 +139,7 @@ describe('FileManager', () => {
 
       const id = await fileManager.getNextId();
 
-      expect(id).toBe(3);
+      expect(id).toBe(1);
     });
 
     it('should maintain ID uniqueness', async () => {
@@ -148,8 +148,42 @@ describe('FileManager', () => {
       const id1 = await fileManager.getNextId();
       const id2 = await fileManager.getNextId();
 
-      expect(id1).toBe(10);
-      expect(id2).toBe(10); // Same because no new files created
+      expect(id1).toBe(0);
+      expect(id2).toBe(0); // Same because no new files created
+    });
+  });
+
+  describe('List issues', () => {
+    it('should list issues from stash and doing with index fallback', async () => {
+      mockedFs.readdir
+        .mockResolvedValueOnce(['Test.1.md'])
+        .mockResolvedValueOnce(['Work.2.md']);
+      mockedFs.readFile
+        .mockResolvedValueOnce(
+          '---\nCreate Date: "2026-01-12"\nType: "feat"\n---\n\nDescription'
+        )
+        .mockResolvedValueOnce(
+          '---\nCreate Date: "2026-01-12"\nType: "bug"\nIndex: 5\n---\n\nDescription'
+        );
+      mockedYaml.parse
+        .mockReturnValueOnce({
+          'Create Date': '2026-01-12',
+          Type: 'feat',
+        })
+        .mockReturnValueOnce({
+          'Create Date': '2026-01-12',
+          Type: 'bug',
+          Index: 5,
+        });
+
+      const result = await fileManager.listIssues();
+
+      expect(result.success).toBe(true);
+      expect(result.issues).toHaveLength(2);
+      expect(result.issues?.[0].index).toBe(1);
+      expect(result.issues?.[0].type).toBe(IssueType.FEAT);
+      expect(result.issues?.[1].index).toBe(5);
+      expect(result.issues?.[1].type).toBe(IssueType.BUG);
     });
   });
 

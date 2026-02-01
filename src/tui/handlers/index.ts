@@ -11,3 +11,5 @@ export { openCommandHandler } from './open.js';
 export type { OpenCommandResult } from './open.js';
 export { closeCommandHandler } from './close.js';
 export type { CloseCommandResult } from './close.js';
+export { listCommandHandler } from './list.js';
+export type { ListCommandResult } from './list.js';

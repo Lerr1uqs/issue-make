@@ -43,6 +43,7 @@ describe('TUI Command Handlers', () => {
         api: '',
         model: '',
       }),
+      configExists: jest.fn().mockResolvedValue(true),
       getConfig: jest.fn().mockResolvedValue({
         url: 'https://api.test.com',
         api: 'test-key',
@@ -215,6 +216,15 @@ describe('TUI Command Handlers', () => {
 
       expect(result.success).toBe(true);
       expect(result.issue?.title).toMatch(/^Issue-\d+$/);
+    });
+
+    it('should warn when config file is missing', async () => {
+      mockConfigManager.configExists.mockResolvedValue(false);
+
+      const result = await addCommandHandler(IssueType.FEAT, 'Test', '/test');
+
+      expect(result.success).toBe(true);
+      expect(result.warning).toContain('Config file not found');
     });
 
     it('should return correct file path', async () => {

@@ -42,7 +42,7 @@ describe('AIService', () => {
   describe('AC-2.3.1: Generate title with valid config', () => {
     it('should generate a relevant title from description', async () => {
       const description = 'Add user authentication feature with JWT tokens';
-      const expectedTitle = 'Add user authentication with JWT tokens';
+      const expectedTitle = 'add user authentication with jwt tokens';
 
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [
@@ -62,7 +62,7 @@ describe('AIService', () => {
 
     it('should generate a title of reasonable length', async () => {
       const description = 'Implement comprehensive error handling for all API endpoints including validation, authorization, and database errors';
-      const shortTitle = 'Implement comprehensive API error handling';
+      const shortTitle = 'implement comprehensive api error handling';
 
       (mockOpenAI.chat.completions.create as jest.Mock).mockResolvedValue({
         choices: [

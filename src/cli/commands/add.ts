@@ -48,6 +48,10 @@ export async function addCommand(type: string, filePath: string): Promise<void> 
   // Try to generate title with AI
   let title: string;
   try {
+    const configExists = await configManager.configExists();
+    if (!configExists) {
+      console.warn('⚠ Config file not found. Run "issue-make init" to enable AI titles.');
+    }
     const config = await configManager.getConfig();
     const aiService = new AIService(config);
 

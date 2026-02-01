@@ -8,7 +8,9 @@ export const AVAILABLE_COMMANDS = [
   '/add:refact',
   '/open',
   '/close',
+  '/list',
   '/exit',
+  '/quit',
 ];
 
 export function getMatchingCommands(value: string): string[] {

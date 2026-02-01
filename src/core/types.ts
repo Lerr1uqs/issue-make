@@ -145,3 +145,23 @@ export interface IssueCloseResult {
   archivedPath?: string;
   error?: string;
 }
+
+/**
+ * Issue list item
+ */
+export interface IssueListItem {
+  title: string;
+  number: number;
+  index: number;
+  type: IssueType | 'unknown';
+  status: IssueStatus;
+}
+
+/**
+ * Issue list result
+ */
+export interface IssueListResult {
+  success: boolean;
+  issues?: IssueListItem[];
+  error?: string;
+}

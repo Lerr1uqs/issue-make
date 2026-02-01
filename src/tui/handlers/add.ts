@@ -20,6 +20,7 @@ export interface AddCommandResult {
     type: IssueType;
   };
   filePath?: string;
+  warning?: string;
   error?: string;
 }
 
@@ -43,11 +44,17 @@ export async function addCommandHandler(
   }
 
   const fileManager = new FileManager(basePath);
+  const configManager = new ConfigManager();
+  let warning: string | undefined;
+
+  const configExists = await configManager.configExists();
+  if (!configExists) {
+    warning = 'Config file not found. Run /init to enable AI titles.';
+  }
 
   // Try to generate title with AI
   let title: string;
   try {
-    const configManager = new ConfigManager();
     const config = await configManager.getConfig();
     const aiService = new AIService(config);
 
@@ -77,6 +84,7 @@ export async function addCommandHandler(
         type: result.issue!.type,
       },
       filePath: result.filePath,
+      warning,
     };
   } else {
     return {

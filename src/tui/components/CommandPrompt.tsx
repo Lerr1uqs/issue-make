@@ -25,8 +25,12 @@ export const CommandPrompt: React.FC = () => {
         <Text> - Open an issue to work on</Text>
         <Text color="magenta">/close &lt;number|title&gt;</Text>
         <Text> - Close and archive an issue</Text>
+        <Text color="cyan">/list</Text>
+        <Text> - List current issues</Text>
         <Text color="red">/exit</Text>
         <Text> - Exit TUI</Text>
+        <Text color="red">/quit</Text>
+        <Text> - Exit TUI (alias)</Text>
       </Box>
     </Box>
   );

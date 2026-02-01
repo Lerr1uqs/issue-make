@@ -59,7 +59,7 @@ export class AIService {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that generates concise, clear issue titles based on descriptions. Return only the title, no additional text.',
+            content: 'You are a helpful assistant that generates concise, clear issue titles based on descriptions. Return only the title in all lowercase, no additional text.',
           },
           {
             role: 'user',
@@ -150,6 +150,9 @@ export class AIService {
     
     // Remove common prefixes
     sanitized = sanitized.replace(/^(Title:|Issue:|Summary:)\s*/i, '');
+
+    // Enforce lowercase requirement
+    sanitized = sanitized.toLowerCase();
     
     // Limit length
     sanitized = sanitized.substring(0, 100);
