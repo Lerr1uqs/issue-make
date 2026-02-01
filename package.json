@@ -1,6 +1,6 @@
 {
   "name": "issue-make",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "A lightweight issue management tool for developers with AI-enhanced features",
   "main": "dist/index.js",
