@@ -54,8 +54,19 @@ export function getCurrentDate(): string {
  * Get current timestamp for fallback title generation
  * @returns Timestamp string
  */
+let lastTimestamp = 0;
+let timestampCounter = 0;
+
 export function getTimestamp(): string {
-  return Date.now().toString();
+  const now = Date.now();
+  if (now === lastTimestamp) {
+    timestampCounter += 1;
+  } else {
+    lastTimestamp = now;
+    timestampCounter = 0;
+  }
+
+  return timestampCounter === 0 ? String(now) : `${now}${timestampCounter}`;
 }
 
 /**

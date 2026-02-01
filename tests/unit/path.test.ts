@@ -16,6 +16,7 @@ import {
   getSolutionPath,
   getAgentsPath,
 } from '../../src/utils/path';
+import * as path from 'path';
 
 describe('Path Utilities', () => {
   describe('AC-4.3.1: File naming in stash directory', () => {
@@ -161,32 +162,32 @@ describe('Path Utilities', () => {
 
     it('should generate issues directory path', () => {
       const issuesDir = getIssuesDir(basePath);
-      expect(issuesDir).toBe('/project/root/.issues');
+      expect(issuesDir).toBe(path.join(basePath, '.issues'));
     });
 
     it('should generate stash directory path', () => {
       const stashDir = getStashDir(basePath);
-      expect(stashDir).toBe('/project/root/.issues/stash');
+      expect(stashDir).toBe(path.join(basePath, '.issues', 'stash'));
     });
 
     it('should generate doing directory path', () => {
       const doingDir = getDoingDir(basePath);
-      expect(doingDir).toBe('/project/root/.issues/doing');
+      expect(doingDir).toBe(path.join(basePath, '.issues', 'doing'));
     });
 
     it('should generate achieved directory path', () => {
       const achievedDir = getAchievedDir(basePath);
-      expect(achievedDir).toBe('/project/root/.issues/achieved');
+      expect(achievedDir).toBe(path.join(basePath, '.issues', 'achieved'));
     });
 
     it('should generate solution file path', () => {
       const solutionPath = getSolutionPath(basePath);
-      expect(solutionPath).toBe('/project/root/.issues/solution.md');
+      expect(solutionPath).toBe(path.join(basePath, '.issues', 'solution.md'));
     });
 
     it('should generate AGENTS.md path', () => {
       const agentsPath = getAgentsPath(basePath);
-      expect(agentsPath).toBe('/project/root/AGENTS.md');
+      expect(agentsPath).toBe(path.join(basePath, 'AGENTS.md'));
     });
   });
 
@@ -253,7 +254,7 @@ describe('Path Utilities', () => {
       const basePath = '/home/user/project';
       const issuesDir = getIssuesDir(basePath);
 
-      expect(issuesDir).toBe('/home/user/project/.issues');
+      expect(issuesDir).toBe(path.join(basePath, '.issues'));
     });
   });
 });

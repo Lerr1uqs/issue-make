@@ -4,8 +4,10 @@
  */
 
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { ConfigManager } from '../../src/core/config';
 import { FileManager } from '../../src/core/file-manager';
+import { AIService } from '../../src/core/ai';
 import {
   initCommandHandler,
   addCommandHandler,
@@ -18,14 +20,18 @@ import { IssueType } from '../../src/core/types';
 jest.mock('fs/promises');
 jest.mock('../../src/core/config');
 jest.mock('../../src/core/file-manager');
+jest.mock('../../src/core/ai');
 
 const mockedFs = fs as jest.Mocked<typeof fs>;
 const MockedConfigManager = ConfigManager as jest.MockedClass<typeof ConfigManager>;
 const MockedFileManager = FileManager as jest.MockedClass<typeof FileManager>;
+const MockedAIService = AIService as jest.MockedClass<typeof AIService>;
 
 describe('TUI Command Handlers', () => {
+  const basePath = '/test';
   let mockConfigManager: any;
   let mockFileManager: any;
+  let mockAIService: any;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,6 +43,11 @@ describe('TUI Command Handlers', () => {
         api: '',
         model: '',
       }),
+      getConfig: jest.fn().mockResolvedValue({
+        url: 'https://api.test.com',
+        api: 'test-key',
+        model: 'gpt-4',
+      }),
       setConfig: jest.fn().mockResolvedValue(undefined),
       getConfigPath: jest.fn().mockReturnValue('/home/user/.issue-make/settings.json'),
     };
@@ -44,18 +55,20 @@ describe('TUI Command Handlers', () => {
     mockFileManager = {
       ensureDirectories: jest.fn().mockResolvedValue(undefined),
       getNextId: jest.fn().mockResolvedValue(0),
-      createIssue: jest.fn().mockResolvedValue({
-        success: true,
-        issue: {
-          number: 0,
-          title: 'Test Issue',
-          type: IssueType.FEAT,
-          content: 'Test content',
-          createDate: new Date(),
-          status: 'stash',
-        },
-        filePath: '/test/.issues/stash/Test.0.md',
-      }),
+      createIssue: jest.fn().mockImplementation((title: string, type: IssueType, content: string) =>
+        Promise.resolve({
+          success: true,
+          issue: {
+            number: 0,
+            title,
+            type,
+            content,
+            createDate: new Date(),
+            status: 'stash',
+          },
+          filePath: path.join(basePath, '.issues', 'stash', 'Test.0.md'),
+        })
+      ),
       openIssue: jest.fn().mockResolvedValue({
         success: true,
         issue: {
@@ -66,16 +79,31 @@ describe('TUI Command Handlers', () => {
           createDate: new Date(),
           status: 'doing',
         },
-        solutionPath: '/test/.issues/solution.md',
+        solutionPath: path.join(basePath, '.issues', 'solution.md'),
       }),
       closeIssue: jest.fn().mockResolvedValue({
         success: true,
-        archivedPath: '/test/.issues/achieved/Test.md',
+        archivedPath: path.join(basePath, '.issues', 'achieved', 'Test.md'),
+      }),
+    };
+
+    mockAIService = {
+      isConfigured: jest.fn().mockReturnValue(false),
+      generateTitle: jest.fn().mockResolvedValue({
+        success: true,
+        title: 'Test Issue',
       }),
     };
 
     MockedConfigManager.mockImplementation(() => mockConfigManager);
     MockedFileManager.mockImplementation(() => mockFileManager);
+    MockedAIService.mockImplementation((config: any) => ({
+      ...mockAIService,
+      isConfigured: jest.fn().mockReturnValue(!!(config?.url && config?.api && config?.model)),
+    }));
+
+    mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
+    mockedFs.writeFile.mockResolvedValue(undefined);
   });
 
   describe('initCommandHandler', () => {
@@ -118,8 +146,6 @@ describe('TUI Command Handlers', () => {
   describe('addCommandHandler', () => {
     it('should create issue successfully with valid description', async () => {
       const description = 'Test issue description';
-      const basePath = '/test';
-
       const result = await addCommandHandler(IssueType.FEAT, description, basePath);
 
       expect(result.success).toBe(true);
@@ -127,7 +153,7 @@ describe('TUI Command Handlers', () => {
       expect(result.issue?.number).toBe(0);
       expect(result.issue?.title).toBe('Test Issue');
       expect(result.issue?.type).toBe(IssueType.FEAT);
-      expect(result.filePath).toBe('/test/.issues/stash/Test.0.md');
+      expect(result.filePath).toBe(path.join(basePath, '.issues', 'stash', 'Test.0.md'));
       expect(mockFileManager.createIssue).toHaveBeenCalled();
     });
 
@@ -196,24 +222,20 @@ describe('TUI Command Handlers', () => {
 
       expect(result.filePath).toBeDefined();
       expect(typeof result.filePath).toBe('string');
-      expect(result.filePath).toContain('/test/.issues/stash/');
+      expect(result.filePath).toContain(path.join(basePath, '.issues', 'stash'));
     });
   });
 
   describe('openCommandHandler', () => {
     it('should open issue successfully with valid identifier', async () => {
       const identifier = '0';
-      const basePath = '/test';
-
-      mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
-
       const result = await openCommandHandler(identifier, basePath);
 
       expect(result.success).toBe(true);
       expect(result.issue).toBeDefined();
       expect(result.issue?.number).toBe(0);
       expect(result.issue?.title).toBe('Test Issue');
-      expect(result.solutionPath).toBe('/test/.issues/solution.md');
+      expect(result.solutionPath).toBe(path.join(basePath, '.issues', 'solution.md'));
       expect(result.agentsPath).toBeDefined();
       expect(mockFileManager.openIssue).toHaveBeenCalledWith(identifier);
       expect(mockedFs.writeFile).toHaveBeenCalled();
@@ -247,8 +269,6 @@ describe('TUI Command Handlers', () => {
     });
 
     it('should update AGENTS.md file', async () => {
-      mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
-
       const result = await openCommandHandler('0', '/test');
 
       expect(result.success).toBe(true);
@@ -279,18 +299,14 @@ describe('TUI Command Handlers', () => {
     });
 
     it('should return solution path', async () => {
-      mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
-
       const result = await openCommandHandler('0', '/test');
 
       expect(result.solutionPath).toBeDefined();
       expect(typeof result.solutionPath).toBe('string');
-      expect(result.solutionPath).toContain('/test/.issues/solution.md');
+      expect(result.solutionPath).toContain(path.join(basePath, '.issues', 'solution.md'));
     });
 
     it('should return agents path', async () => {
-      mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
-
       const result = await openCommandHandler('0', '/test');
 
       expect(result.agentsPath).toBeDefined();
@@ -301,14 +317,10 @@ describe('TUI Command Handlers', () => {
   describe('closeCommandHandler', () => {
     it('should close issue successfully with valid identifier', async () => {
       const identifier = '0';
-      const basePath = '/test';
-
-      mockedFs.readFile.mockResolvedValue('<!-- ISSUE-MAKE:START -->\nTest\n<!-- ISSUE-MAKE:END -->');
-
       const result = await closeCommandHandler(identifier, basePath);
 
       expect(result.success).toBe(true);
-      expect(result.archivedPath).toBe('/test/.issues/achieved/Test.md');
+      expect(result.archivedPath).toBe(path.join(basePath, '.issues', 'achieved', 'Test.md'));
       expect(result.agentsPath).toBeDefined();
       expect(mockFileManager.closeIssue).toHaveBeenCalledWith(identifier);
       expect(mockedFs.writeFile).toHaveBeenCalled();
@@ -342,10 +354,6 @@ describe('TUI Command Handlers', () => {
     });
 
     it('should clean up AGENTS.md file', async () => {
-      mockedFs.readFile.mockResolvedValue(
-        '# AGENTS.md\n\n<!-- ISSUE-MAKE:START -->\nTest\n<!-- ISSUE-MAKE:END -->\n'
-      );
-
       const result = await closeCommandHandler('0', '/test');
 
       expect(result.success).toBe(true);
@@ -367,18 +375,14 @@ describe('TUI Command Handlers', () => {
     });
 
     it('should return archived path', async () => {
-      mockedFs.readFile.mockResolvedValue('<!-- ISSUE-MAKE:START -->\nTest\n<!-- ISSUE-MAKE:END -->');
-
       const result = await closeCommandHandler('0', '/test');
 
       expect(result.archivedPath).toBeDefined();
       expect(typeof result.archivedPath).toBe('string');
-      expect(result.archivedPath).toContain('/test/.issues/achieved/');
+      expect(result.archivedPath).toContain(path.join(basePath, '.issues', 'achieved'));
     });
 
     it('should return agents path', async () => {
-      mockedFs.readFile.mockResolvedValue('<!-- ISSUE-MAKE:START -->\nTest\n<!-- ISSUE-MAKE:END -->');
-
       const result = await closeCommandHandler('0', '/test');
 
       expect(result.agentsPath).toBeDefined();
@@ -393,7 +397,6 @@ describe('TUI Command Handlers', () => {
       expect(initResult.success).toBe(true);
 
       // Add
-      mockedFs.readFile.mockResolvedValue('# AGENTS.md\n\n');
       const addResult = await addCommandHandler(IssueType.FEAT, 'Test', '/test');
       expect(addResult.success).toBe(true);
 

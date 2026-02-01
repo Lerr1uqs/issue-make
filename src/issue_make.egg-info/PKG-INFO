@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: issue-make
+Version: 1.0.0
+Summary: A lightweight issue management tool for developers with AI-enhanced features
+Author: Issue-Make Team
+License: MIT
+Keywords: issue,task,management,cli,tui,ai,developer-tools
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development
+Classifier: Topic :: Utilities
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: prompt-toolkit>=3.0.0
+Requires-Dist: pyyaml>=6.0.0
+Requires-Dist: openai>=1.0.0
+Requires-Dist: mypy>=1.19.1
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+
+暂未完工

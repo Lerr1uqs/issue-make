@@ -24,8 +24,12 @@ export function validateIssueType(type: string): IssueType | null {
  * @returns Valid number or null
  */
 export function validateIssueNumber(number: string): number | null {
-  const num = parseInt(number, 10);
-  if (isNaN(num) || num < 0) {
+  if (!/^\d+$/.test(number)) {
+    return null;
+  }
+
+  const num = Number(number);
+  if (Number.isNaN(num) || num < 0) {
     return null;
   }
   return num;

@@ -16,9 +16,9 @@ import { AIService } from '../../src/core/ai';
 const consoleError = jest.spyOn(console, 'error').mockImplementation();
 const consoleLog = jest.spyOn(console, 'log').mockImplementation();
 const consoleWarn = jest.spyOn(console, 'warn').mockImplementation();
-const processExit = jest.spyOn(process, 'exit').mockImplementation((code?: number) => {
+const processExit = jest.spyOn(process, 'exit').mockImplementation(((code?: number) => {
   throw new Error(`Process exited with code ${code}`);
-} as any);
+}) as any);
 
 // Mock modules
 jest.mock('fs/promises');
@@ -38,10 +38,6 @@ describe('CLI Commands', () => {
     consoleLog.mockClear();
     consoleWarn.mockClear();
     processExit.mockClear();
-  });
-
-  afterEach(() => {
-    jest.restoreAllMocks();
   });
 
   describe('AC-1.1.1: Init command', () => {
@@ -74,7 +70,10 @@ describe('CLI Commands', () => {
         expect((error as Error).message).toContain('Process exited');
       }
 
-      expect(consoleError).toHaveBeenCalledWith(expect.stringContaining('Failed to initialize'));
+      expect(consoleError).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to initialize'),
+        expect.any(Error)
+      );
     });
   });
 

@@ -49,6 +49,7 @@ export interface IssueFile {
 export interface IssueMetadata {
   'Create Date': string;
   Type: IssueType;
+  Index: number;
 }
 
 /**

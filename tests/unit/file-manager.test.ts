@@ -4,6 +4,7 @@
  */
 
 import * as fs from 'fs/promises';
+import * as path from 'path';
 import { FileManager } from '../../src/core/file-manager';
 import { IssueType, IssueStatus } from '../../src/core/types';
 
@@ -23,10 +24,11 @@ describe('FileManager', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     fileManager = new FileManager(basePath);
-    mockedYaml.stringify.mockReturnValue('Create Date: "2026-01-12"\nType: "feat"\n');
+    mockedYaml.stringify.mockReturnValue('Create Date: "2026-01-12"\nType: "feat"\nIndex: 0\n');
     mockedYaml.parse.mockReturnValue({
       'Create Date': '2026-01-12',
       Type: 'feat',
+      Index: 0,
     });
   });
 
@@ -229,6 +231,19 @@ describe('FileManager', () => {
       const writtenContent = mockedFs.writeFile.mock.calls[0][1] as string;
       expect(writtenContent).toContain('Type');
       expect(writtenContent).toContain('feat');
+    });
+
+    it('should include Index in frontmatter', async () => {
+      mockedFs.mkdir.mockResolvedValue(undefined);
+      mockedFs.readdir.mockRejectedValue(new Error('ENOENT') as any);
+      mockedFs.writeFile.mockResolvedValue(undefined);
+
+      const result = await fileManager.createIssue('Test', IssueType.FEAT, 'Description');
+
+      expect(result.success).toBe(true);
+      const writtenContent = mockedFs.writeFile.mock.calls[0][1] as string;
+      expect(writtenContent).toContain('Index');
+      expect(writtenContent).toMatch(/Index:\s*\d+/);
     });
 
     it('should include original content after frontmatter', async () => {
@@ -478,7 +493,8 @@ describe('FileManager', () => {
       );
 
       expect(result.success).toBe(true);
-      expect(result.filePath).not.toMatch(/[<>:"/\\|?*]/);
+      const fileName = path.basename(result.filePath || '');
+      expect(fileName).not.toMatch(/[<>:"/\\|?*]/);
     });
 
     it('should handle large ID numbers', async () => {

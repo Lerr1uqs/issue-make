@@ -118,6 +118,7 @@ export class FileManager {
       const metadata: IssueMetadata = {
         'Create Date': getCurrentDate(),
         Type: type,
+        Index: id,
       };
 
       const fileContent = this.formatIssueFile(metadata, content);
@@ -217,7 +218,14 @@ export class FileManager {
   async findIssueByTitle(title: string): Promise<IssueSearchResult> {
     const stashDir = getStashDir(this.basePath);
     const doingDir = getDoingDir(this.basePath);
-    const searchLower = title.toLowerCase();
+    const searchNormalized = this.normalizeTitleForSearch(title);
+
+    if (!searchNormalized) {
+      return {
+        found: false,
+        error: `Issue with title containing "${title}" not found`,
+      };
+    }
 
     // Check stash directory
     try {
@@ -225,7 +233,11 @@ export class FileManager {
       for (const file of stashFiles) {
         if (isIssueFile(file)) {
           const fileTitle = file.replace(/\.\d+\.md$/, '').toLowerCase();
-          if (fileTitle.includes(searchLower) || searchLower.includes(fileTitle)) {
+          const fileNormalized = this.normalizeTitleForSearch(fileTitle);
+          if (
+            fileNormalized.includes(searchNormalized) ||
+            searchNormalized.includes(fileNormalized)
+          ) {
             return this.loadIssueFile(path.join(stashDir, file));
           }
         }
@@ -240,7 +252,11 @@ export class FileManager {
       for (const file of doingFiles) {
         if (isIssueFile(file)) {
           const fileTitle = file.replace(/\.\d+\.md$/, '').toLowerCase();
-          if (fileTitle.includes(searchLower) || searchLower.includes(fileTitle)) {
+          const fileNormalized = this.normalizeTitleForSearch(fileTitle);
+          if (
+            fileNormalized.includes(searchNormalized) ||
+            searchNormalized.includes(fileNormalized)
+          ) {
             return this.loadIssueFile(path.join(doingDir, file));
           }
         }
@@ -439,5 +455,19 @@ export class FileManager {
     const body = match[2];
 
     return { metadata, body };
+  }
+
+  /**
+   * Normalize titles for fuzzy matching
+   * @param title - Title to normalize
+   * @returns Normalized string
+   */
+  private normalizeTitleForSearch(title: string): string {
+    return title
+      .toLowerCase()
+      .replace(/[-_]+/g, ' ')
+      .replace(/[^\p{L}\p{N}\s]+/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 }

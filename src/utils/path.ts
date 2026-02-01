@@ -16,6 +16,7 @@ export function sanitizeTitle(title: string): string {
   let sanitized = title
     .replace(/[<>:"/\\|?*]/g, '_') // Invalid filename characters
     .replace(/\s+/g, '-') // Replace spaces with dashes
+    .replace(/_+/g, '_') // Collapse consecutive underscores
     .replace(/-+/g, '-') // Remove consecutive dashes
     .replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
 
@@ -24,7 +25,11 @@ export function sanitizeTitle(title: string): string {
     sanitized = sanitized.substring(0, 80);
   }
 
-  return sanitized || 'untitled';
+  if (!sanitized || sanitized.replace(/[-_]+/g, '').trim().length === 0) {
+    return 'untitled';
+  }
+
+  return sanitized;
 }
 
 /**

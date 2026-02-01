@@ -3,7 +3,7 @@ export default {
   preset: 'ts-jest/presets/default-esm',
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
-  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
+  testMatch: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts', '**/?(*.)+(spec|test).tsx'],
   collectCoverageFrom: [
     'src/**/*.ts',
     '!src/**/*.d.ts',
@@ -15,17 +15,24 @@ export default {
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {
-    '^.+\\.tsx?$': [
+    '^.+\\.[tj]sx?$': [
       'ts-jest',
       {
         useESM: true,
         tsconfig: {
+          jsx: 'react',
           esModuleInterop: true,
           allowSyntheticDefaultImports: true,
           isolatedModules: true,
+          module: 'ESNext',
+          moduleResolution: 'NodeNext',
+          allowJs: true,
         },
       },
     ],
   },
   extensionsToTreatAsEsm: ['.ts', '.tsx'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(ink|ansi-escapes|react|ink-testing-library|@inkjs|prop-types))/',
+  ],
 };

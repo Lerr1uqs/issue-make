@@ -4,4 +4,4 @@
  * Issue-Make CLI Entry Point
  */
 
-require('../dist/index.js');
+import '../dist/index.js';
